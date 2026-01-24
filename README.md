@@ -1,0 +1,200 @@
+---
+title: "Linux Mint 21.3 or 22 (LMDE) on Asus T100TA"
+author: "Derk Lambers"
+date: "2025-12-08"
+tags: ["Linux", "Asus T100TA", "Mint22", "UEFI", "32-bit"]
+---
+
+# Linux Mint 21.3 or 22 (LMDE) on Asus T100TA  
+## Definitive GRUB EFI-IA32 Installation & Repair Guide
+
+This guide provides a **complete method** to install Linux Mint 22 or LMDE on the Asus T100TA, a device with a 64-bit CPU and 32-bit UEFI firmware. It includes all steps for USB prep, installation, GRUB, EFI entries and optional final tweaks.
+
+---
+
+## Why GRUB Fails on the Asus T100TA
+
+The T100TA will only boot if:
+- GRUB is installed as 32-bit EFI (i386-efi)
+- A valid EFI boot entry exists
+- The entry points to a real EFI file
+- EFI variables (efivars) are mounted
+- The OS is installed on internal MMC storage
+
+---
+
+## Requirements
+
+- Asus T100TA
+- Linux Mint 21.3 or 22 Live USB
+- Installation completed
+- Do NOT reboot after installation
+
+---
+
+## USB Preparation
+
+1. Download **Linux Mint 22**.  
+2. Use **Rufus (Windows)** or **Balena Etcher (Windows/Linux)** to write the ISO as **GPT + UEFI (without Secure Boot enabled in BIOS)**.  
+3. Optionally copy `bootia32.efi` to the USB stick:
+
+```bash
+cp bootia32.efi /media/USB/EFI/BOOT/
+```
+
+> This ensures the T100TA can boot from the USB stick if the default loader fails.
+
+---
+
+## Step 0 — Installation
+
+1. Boot the USB in **UEFI mode**. 
+2. Connect to Wifi for getting the latest updates and third party drivers.
+3. During installation:
+```text
+- Select "Erase disk and install Mint"
+- Use entire eMMC or SSD
+- Let the installer create EFI partition automatically
+```
+4. **Do not boot into Mint yet** — we will repair GRUB first.
+
+---
+
+## Step 1 — Identify partitions
+
+```bash
+lsblk -f
+```
+
+Typical layout:
+- mmcblk1p1 = EFI (vfat)
+- mmcblk1p3 = Linux root (ext4)
+
+---
+
+## Step 2 — Mount installed system
+
+```bash
+sudo mkdir -p /target
+sudo mount /dev/mmcblk1p3 /target
+```
+
+---
+
+## Step 3 — Bind essential directories
+
+```bash
+sudo bash -c '
+for dir in dev dev/pts proc run sys sys/firmware/efi/efivars; do
+    mount --bind /$dir /target/$dir
+done'
+```
+
+---
+
+## Step 4 — DNS fix
+
+```bash
+sudo cp /etc/resolv.conf /target/etc/resolv.conf
+```
+
+---
+
+## Step 5 — Enter chroot
+
+```bash
+sudo chroot /target /bin/bash
+```
+
+---
+
+## Step 6 — Mount EFI
+
+```bash
+mkdir -p /boot/efi
+mount /dev/mmcblk1p1 /boot/efi
+```
+
+---
+
+## Step 7 — Install GRUB packages
+
+```bash
+apt update
+apt install grub-efi-ia32-bin efibootmgr
+```
+
+---
+
+## Step 8 — Install GRUB
+
+```bash
+grub-install --target=i386-efi --efi-directory=/boot/efi --boot-directory=/boot --no-nvram
+update-grub
+```
+
+---
+
+## Step 9 — Verify EFI file
+
+```bash
+ls /boot/efi/EFI/debian/
+```
+
+Expect:
+- grubia32.efi
+
+---
+
+## Step 10 — Create EFI boot entry
+
+```bash
+efibootmgr -c -d /dev/mmcblk1 -p 1 -l '\EFI\debian\grubia32.efi' -L 'Linux Mint'
+```
+
+---
+
+## Step 11 — Exit & reboot
+
+```bash
+exit
+cd /
+sudo umount /target/sys/firmware/efi/efivars
+sudo umount /target/dev/pts
+sudo umount /target/dev
+sudo umount /target/proc
+sudo umount /target/run
+sudo umount /target/sys
+sudo umount /boot/efi
+sudo umount /target
+reboot
+```
+
+---
+
+## Post-Install Fixes
+
+### Grub No Splash Screen
+
+```bash
+sudo nano /etc/default/grub
+```
+Change:
+```text
+GRUB_TIMEOUT=5
+```
+To:
+```text
+GRUB_TIMEOUT=0
+```
+Add:
+```text
+GRUB_TIMEOUT_STYLE=hidden
+GRUB_HIDDEN_TIMEOUT=0
+```
+Then:
+```bash
+sudo update-grub2
+sudo reboot
+```
+
