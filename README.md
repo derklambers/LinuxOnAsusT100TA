@@ -243,3 +243,9 @@ systemctl status fstrim.timer
 sudo systemctl enable fstrim.timer
 sudo systemctl start fstrim.timer
 ```
+
+### 6. Usage of preload
+
+```bash
+sudo apt install preload
+```
