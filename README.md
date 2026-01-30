@@ -1,7 +1,7 @@
 ---
 title: "Linux Mint 21.3 or 22 (LMDE) on Asus T100TA"
 author: "Derk Lambers"
-date: "2025-12-08"
+date: "2026-01-30"
 tags: ["Linux", "Asus T100TA", "Mint22", "UEFI", "32-bit"]
 ---
 
@@ -174,7 +174,7 @@ reboot
 
 ## Post-Install Fixes
 
-### Grub No Splash Screen
+### 1. Grub No Splash Screen
 
 ```bash
 sudo nano /etc/default/grub
@@ -198,3 +198,48 @@ sudo update-grub2
 sudo reboot
 ```
 
+### 2. Reduce Swappiness (major performance gain)
+
+```bash
+echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-swappiness.conf
+sudo sysctl -p /etc/sysctl.d/99-swappiness.conf
+```
+
+---
+
+### 3. Enable ZRAM (compressed RAM swap)
+
+```bash
+sudo apt update
+sudo apt install zram-tools
+```
+
+Verify:
+```bash
+swapon --show
+```
+
+### 4. Backlight Fix (brightness keys)
+
+```bash
+sudo nano /etc/default/grub
+```
+
+Edit:
+```text
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash acpi_backlight=intel"
+```
+
+Apply:
+```bash
+sudo update-grub
+sudo reboot
+```
+
+### 5. Enable TRIM for eMMC
+
+```bash
+systemctl status fstrim.timer
+sudo systemctl enable fstrim.timer
+sudo systemctl start fstrim.timer
+```
