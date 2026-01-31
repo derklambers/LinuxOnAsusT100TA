@@ -173,6 +173,7 @@ reboot
 ---
 
 ## Post-Install Fixes
+Advanced performance and usability tweaks for the T100TA (Intel Atom, 2 GB RAM, eMMC).
 
 ### 1. Grub No Splash Screen
 
@@ -244,8 +245,78 @@ sudo systemctl enable fstrim.timer
 sudo systemctl start fstrim.timer
 ```
 
-### 6. Usage of preload
+### 6. Preload (Application Preloading)
 
 ```bash
+sudo apt update
 sudo apt install preload
+sudo systemctl enable preload
+sudo systemctl start preload
+```
+
+### 7. Limit systemd-journald Disk Usage
+
+```bash
+sudo nano /etc/systemd/journald.conf
+```
+
+Add or change:
+```text
+SystemMaxUse=50M
+RuntimeMaxUse=20M
+```
+
+```bash
+sudo systemctl restart systemd-journald
+```
+
+### 8. Reduce Disk Writes (noatime)
+
+```bash
+sudo nano /etc/fstab
+```
+
+Example entry:
+```text
+UUID=xxxx / ext4 defaults,noatime 0 1
+```
+Do not modify other fields unless you know what you are doing.
+
+### 9. Boot Time Optimization
+
+```bash
+systemd-analyze blame
+```
+
+Often safe to disable if unused:
+```bash
+sudo systemctl disable ModemManager
+sudo systemctl disable avahi-daemon
+```
+
+### 10. Low-RAM Kernel VM Tweaks
+
+Create config:
+```bash
+sudo nano /etc/sysctl.d/99-lowram.conf
+```
+
+Add:
+```text
+vm.vfs_cache_pressure=50
+vm.dirty_ratio=10
+vm.dirty_background_ratio=5
+```
+
+Apply:
+```bash
+sudo sysctl -p /etc/sysctl.d/99-lowram.conf
+```
+
+### 11. Disable Unneeded Background Services
+
+If not used:
+```bash
+sudo systemctl disable bluetooth
+sudo systemctl disable cups
 ```
